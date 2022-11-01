@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: The bucket name from the parent stack.
+  SNSTopicArn:
+    Type: String
+    Description: The topic ARN from the parent stack.
+
+Resources:
+  S3Bucket:
+    Type: "AWS::S3::Bucket"
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref S3BucketName
+      NotificationConfiguration:
+        TopicConfigurations:
+          - Topic: !Ref SNSTopicArn
+            Event: "s3:ObjectCreated:*"
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: ".jpg"
+                  - Name: prefix
+                    Value: "upload/"
+    DependsOn:
+      - S3ToSNSPermission
+
+  S3ToSNSPermission:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SNSTopicArn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Sub "arn:aws:s3:::${S3BucketName}"
+      Topics:
+        - !Ref SNSTopicArn
+
+  BucketPolicySource:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "rekognition.amazonaws.com"
+            Action:
+              - "s3:GetBucketAcl"
+              - "s3:GetBucketLocation"
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}"
+          - Effect: Allow
+            Principal:
+              Service: "rekognition.amazonaws.com"
+            Action:
+              - "s3:GetObject"
+              - "s3:GetObjectAcl"
+              - "s3:GetObjectVersion"
+              - "s3:GetObjectTagging"
+            Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"

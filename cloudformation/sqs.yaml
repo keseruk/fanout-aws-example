@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  SNSTopicArn:
+    Type: String
+    Description: The SNS topic ARN from the parent stack.
+  ResizeQueueName:
+    Type: String
+    Description: The SQS queue name for the resize jobs
+  ProcessorQueueName:
+    Type: String
+    Description: The SQS queue name for the metadata processor jobs
+  DeadLetterQueueName:
+    Type: String
+    Description: The SQS queue name for the metadata processor jobs
+
+Resources:
+  SQSResizeQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref ResizeQueueName
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  SQSResizeQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref SQSResizeQueue
+      PolicyDocument:
+        Id: AllowIncomingAccess
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref AWS::AccountId
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+            Resource:
+              - !GetAtt SQSResizeQueue.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - !GetAtt SQSResizeQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref SNSTopicArn
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref DeadLetterQueueName
+      VisibilityTimeout: 60
+
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SNSTopicArn
+      Endpoint: !GetAtt SQSResizeQueue.Arn
+      Protocol: sqs
+      RawMessageDelivery: true
+
+Outputs:
+  SQSResizeQueueArn:
+    Description: The SQS resize queue ARN
+    Value: !GetAtt SQSResizeQueue.Arn

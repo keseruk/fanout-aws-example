@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  TopicName:
+    Type: String
+    Description: The SNS topic name from the parent stack.
+
+Resources:
+  FanOutTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Ref TopicName
+      # TopicName: !Sub "${ParentStackName}-${TopicName}"
+Outputs:
+  SNSTopic:
+    Description: The SNS topic
+    Value: !Ref FanOutTopic

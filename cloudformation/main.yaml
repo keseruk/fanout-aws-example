@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  TemplateBucketName:
+    Type: String
+    Description: The name of the S3 bucket for the CloudFormation templates
+  BucketName:
+    Type: String
+    Description: The name of the S3 bucket for the images. Stack name will be added as prefix.
+    Default: assets-bucket
+  TopicName:
+    Type: String
+    Description: The name of the SNS topic for S3 notifications. Stack name will be added as prefix.
+    Default: s3-notification-topic
+  ResizeQueueName:
+    Type: String
+    Description: The name of the SQS resize queue. Stack name will be added as prefix.
+    Default: resize-queue
+  ProcessorQueueName:
+    Type: String
+    Description: The name of the SQS image processor queue. Stack name will be added as prefix.
+    Default: processor-queue
+  DeadLetterQueueName:
+    Type: String
+    Description: The name of the SQS dead-letter queue. Stack name will be added as prefix.
+    Default: deadletterqueue
+
+Resources:
+  SNS:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/sns.yaml"
+      Parameters:
+        TopicName: !Sub "${AWS::StackName}-${TopicName}"
+
+  S3:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/s3.yaml"
+      Parameters:
+        S3BucketName: !Sub "${AWS::StackName}-${BucketName}"
+        SNSTopicArn: !GetAtt SNS.Outputs.SNSTopic
+
+  SQS:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/sqs.yaml"
+      Parameters:
+        ResizeQueueName: !Sub "${AWS::StackName}-${ResizeQueueName}"
+        ProcessorQueueName: !Sub "${AWS::StackName}-${ProcessorQueueName}"
+        DeadLetterQueueName: !Sub "${AWS::StackName}-${DeadLetterQueueName}"
+        SNSTopicArn: !GetAtt SNS.Outputs.SNSTopic
+
+  Lambda:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/lambda.yaml"
+      Parameters:
+        S3BucketName: !Sub "${AWS::StackName}-${BucketName}"
+        SQSResizeQueueArn: !GetAtt SQS.Outputs.SQSResizeQueueArn
+        # SQSProcessorQueueArn: !GetAtt SQS.Outputs.SQSProcessorQueueArn
