@@ -23,6 +23,42 @@ Resources:
         deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
         maxReceiveCount: 3
 
+  SQSProcessorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref ProcessorQueueName
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  SQSProcessorQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref SQSProcessorQueue
+      PolicyDocument:
+        Id: AllowIncomingAccess
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref AWS::AccountId
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+            Resource:
+              - !GetAtt SQSProcessorQueue.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - !GetAtt SQSProcessorQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref SNSTopicArn
+
   SQSResizeQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
@@ -56,7 +92,7 @@ Resources:
       QueueName: !Ref DeadLetterQueueName
       VisibilityTimeout: 60
 
-  SNSSubscription:
+  SNSSubscriptionForResizeQueue:
     Type: AWS::SNS::Subscription
     Properties:
       TopicArn: !Ref SNSTopicArn
@@ -64,7 +100,18 @@ Resources:
       Protocol: sqs
       RawMessageDelivery: true
 
+  SNSSubscriptionForProcessorQueue:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SNSTopicArn
+      Endpoint: !GetAtt SQSProcessorQueue.Arn
+      Protocol: sqs
+      RawMessageDelivery: true
+
 Outputs:
+  SQSProcessorQueueArn:
+    Description: The SQS processor queue ARN
+    Value: !GetAtt SQSProcessorQueue.Arn
   SQSResizeQueueArn:
     Description: The SQS resize queue ARN
     Value: !GetAtt SQSResizeQueue.Arn

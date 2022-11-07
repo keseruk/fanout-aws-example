@@ -28,14 +28,14 @@ Resources:
   SNS:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/sns.yaml"
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/cf/sns.yaml"
       Parameters:
         TopicName: !Sub "${AWS::StackName}-${TopicName}"
 
   S3:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/s3.yaml"
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/cf/s3.yaml"
       Parameters:
         S3BucketName: !Sub "${AWS::StackName}-${BucketName}"
         SNSTopicArn: !GetAtt SNS.Outputs.SNSTopic
@@ -43,7 +43,7 @@ Resources:
   SQS:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/sqs.yaml"
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/cf/sqs.yaml"
       Parameters:
         ResizeQueueName: !Sub "${AWS::StackName}-${ResizeQueueName}"
         ProcessorQueueName: !Sub "${AWS::StackName}-${ProcessorQueueName}"
@@ -53,8 +53,8 @@ Resources:
   Lambda:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/lambda.yaml"
+      TemplateURL: !Sub "https://${TemplateBucketName}.s3.eu-central-1.amazonaws.com/mom/cf/lambda.yaml"
       Parameters:
         S3BucketName: !Sub "${AWS::StackName}-${BucketName}"
         SQSResizeQueueArn: !GetAtt SQS.Outputs.SQSResizeQueueArn
-        # SQSProcessorQueueArn: !GetAtt SQS.Outputs.SQSProcessorQueueArn
+        SQSProcessorQueueArn: !GetAtt SQS.Outputs.SQSProcessorQueueArn

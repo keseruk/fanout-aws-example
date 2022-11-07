@@ -9,7 +9,6 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Ref TopicName
-      # TopicName: !Sub "${ParentStackName}-${TopicName}"
 Outputs:
   SNSTopic:
     Description: The SNS topic
